@@ -24,7 +24,7 @@ const ENABLE_THINKING_MODE = false; // Set to true to enable chat_template_kwarg
 // Model mapping (adjust based on available NIM models)
 const MODEL_MAPPING = {
   'glm4.7': 'z-ai/glm4.7',
-  'deepseekv3.2': 'z-ai/glm4.7'
+  'deepseekv3.2': 'deepseek-ai/deepseek-v3.2'
 };
 
 // Health check endpoint

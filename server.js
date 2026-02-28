@@ -41,6 +41,12 @@ const logTokens = (model, usage) => {
   console.log(`📊 [${new Date().toISOString()}] modelo: ${model} | tokens entrada: ${entrada} | tokens salida: ${salida} | total: ${total}`);
 };
 
+// Helper para loggear thinking
+const logThinking = (reasoning) => {
+  if (!reasoning) return;
+  console.log(`🧠 [THINKING]\n${reasoning}\n[/THINKING]`);
+};
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
@@ -119,7 +125,8 @@ app.post('/v1/chat/completions', async (req, res) => {
       
       let buffer = '';
       let reasoningStarted = false;
-      
+      let fullReasoning = ''; // acumula el thinking completo para loggearlo al final
+
       response.data.on('data', (chunk) => {
         buffer += chunk.toString();
         const lines = buffer.split('\n');
@@ -128,6 +135,8 @@ app.post('/v1/chat/completions', async (req, res) => {
         lines.forEach(line => {
           if (line.startsWith('data: ')) {
             if (line.includes('[DONE]')) {
+              // Al terminar el stream, loggea el thinking completo
+              if (fullReasoning) logThinking(fullReasoning);
               res.write(line + '\n');
               return;
             }
@@ -135,12 +144,14 @@ app.post('/v1/chat/completions', async (req, res) => {
             try {
               const data = JSON.parse(line.slice(6));
 
-              // Log tokens si vienen en el stream (último chunk)
               if (data.usage) logTokens(model, data.usage);
 
               if (data.choices?.[0]?.delta) {
                 const reasoning = data.choices[0].delta.reasoning_content;
                 const content = data.choices[0].delta.content;
+
+                // Acumula el thinking para loggearlo completo al final
+                if (reasoning) fullReasoning += reasoning;
                 
                 if (SHOW_REASONING) {
                   let combinedContent = '';
@@ -180,8 +191,11 @@ app.post('/v1/chat/completions', async (req, res) => {
       });
 
     } else {
-      // Log tokens en respuesta normal
       logTokens(model, response.data.usage);
+
+      // Log thinking en respuesta normal
+      const reasoning = response.data.choices?.[0]?.message?.reasoning_content;
+      if (reasoning) logThinking(reasoning);
 
       const openaiResponse = {
         id: `chatcmpl-${Date.now()}`,
